@@ -4,13 +4,13 @@ import Quickshell
 import Quickshell.Io
 import ".." as Shell
 
-// Bridge between ~/.local/bin/pond-capture and the corner toast.
+// Bridge between bin/lilypad and the corner toast.
 Singleton {
   id: root
-  readonly property string tool: Quickshell.env("HOME") + "/.local/bin/pond-capture"
-  readonly property string runtimeDir: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/pond-capture"
+  readonly property string tool: Quickshell.shellDir + "/../bin/lilypad"
+  readonly property string runtimeDir: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/lilypad"
 
-  // Region picker: pond-capture asks for a selection and waits for the reply file.
+  // Region picker: lilypad asks for a selection and waits for the reply file.
   property bool selecting: false
   property string selectionToken: ""
   // "image": a screenshot, drawn on before the region is picked. "record": a recording's
@@ -217,7 +217,7 @@ Singleton {
 
   IpcHandler {
     target: "capture"
-    // The token of the picker that's open, or "" (pond-capture polls this, so a picker lost
+    // The token of the picker that's open, or "" (lilypad polls this, so a picker lost
     // to a shell reload cancels its capture at once instead of holding the lock for minutes).
     function selection(): string { return root.selecting ? root.selectionToken : ""; }
     function present(path: string, thumb: string, kind: string, output: string): void {

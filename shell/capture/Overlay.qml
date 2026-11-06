@@ -34,11 +34,11 @@ PanelWindow {
   color: "transparent"
   anchors { left: true; right: true; top: true; bottom: true }
   WlrLayershell.layer: WlrLayer.Overlay
-  WlrLayershell.namespace: "pond-capture-draw"
+  WlrLayershell.namespace: "lilypad-draw"
   WlrLayershell.keyboardFocus: editor.typing ? WlrKeyboardFocus.Exclusive
       : drawing ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
   WlrLayershell.exclusionMode: ExclusionMode.Ignore
-  BackgroundEffect.blurRegion: Shell.Theme.daylight && toolbarHere ? toolbarBlur : null
+  BackgroundEffect.blurRegion: toolbarHere ? toolbarBlur : null
 
   // Where the toolbar goes, worked out by the recorded monitor's overlay: next to
   // the region on this monitor if the bar and its colour strip fit outside it.

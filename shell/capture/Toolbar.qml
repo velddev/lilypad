@@ -203,7 +203,7 @@ Item {
       anchors.fill: parent
       radius: Shell.PanelStyle.radius
       color: "transparent"
-      visible: Shell.Theme.daylight && root.backdrop !== null
+      visible: root.backdrop !== null
       ShaderEffectSource {
         id: behind
         anchors.fill: parent
@@ -224,7 +224,7 @@ Item {
       anchors.fill: parent
       radius: Shell.PanelStyle.radius
       color: Shell.PanelStyle.cardFill
-      border { width: Shell.Theme.daylight ? 1 : 0.5; color: Shell.PanelStyle.outline }
+      border { width: 1; color: Shell.PanelStyle.outline }
       antialiasing: true
     }
     Item {

@@ -48,7 +48,7 @@ PanelWindow {
   color: "transparent"
   anchors { left: true; right: true; top: true; bottom: true }
   WlrLayershell.layer: WlrLayer.Overlay
-  WlrLayershell.namespace: "pond-capture-select"
+  WlrLayershell.namespace: "lilypad-select"
   WlrLayershell.keyboardFocus: active ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
   WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
@@ -125,9 +125,9 @@ PanelWindow {
     level = Math.max(0, Math.min(candidates.length - 1, level + step));
   }
 
-  // The picked region is the shot. With nothing drawn on this monitor pond-capture
+  // The picked region is the shot. With nothing drawn on this monitor lilypad
   // crops the frozen frame exactly as before; otherwise the editor writes the
-  // annotated monitor and pond-capture crops that instead. For a recording, the
+  // annotated monitor and lilypad crops that instead. For a recording, the
   // drawings move to the live overlay and the region goes back as is.
   function take(rect) {
     if (!active || chosen || editor.baking || rect.width < 2 || rect.height < 2) return;
@@ -258,7 +258,7 @@ PanelWindow {
           + (root.candidates.length > 1 && !root.dragging
              ? "   ·   " + (Math.min(root.level, root.candidates.length - 1) + 1) + "/" + root.candidates.length : "")
       color: "white"
-      font { family: Shell.Theme.fontFamily; pixelSize: 12; weight: Font.Medium; features: { "tnum": 1 } }
+      font { family: Shell.PanelStyle.fontFamily; pixelSize: 12; weight: Font.Medium; features: { "tnum": 1 } }
     }
   }
 

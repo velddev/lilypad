@@ -1,7 +1,7 @@
-// pond-regions: find rectangular UI elements in a screenshot.
+// lilypad-regions: find rectangular UI elements in a screenshot.
 //
-//   pond-regions <image.ppm>   ->   JSON [[x,y,w,h], ...] in image pixels, smallest first
-//   pond-regions --windows <image.ppm>
+//   lilypad-regions <image.ppm>   ->   JSON [[x,y,w,h], ...] in image pixels, smallest first
+//   lilypad-regions --windows <image.ppm>
 //                              ->   boxes of everything that is not the wallpaper,
 //                                   for finding windows in niri's overview
 //
@@ -182,7 +182,7 @@ int main(int argc, char **argv) {
   int windows_mode = argc >= 3 && strcmp(argv[1], "--windows") == 0;
   const char *path = argv[windows_mode ? 2 : 1];
   if (argc < 2 || (argc >= 3 && !windows_mode)) {
-    fprintf(stderr, "usage: pond-regions [--windows] image.ppm\n");
+    fprintf(stderr, "usage: lilypad-regions [--windows] image.ppm\n");
     return 2;
   }
   FILE *f = fopen(path, "rb");

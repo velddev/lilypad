@@ -33,7 +33,7 @@ PanelWindow {
   implicitWidth: cardWidth + edge
   implicitHeight: cardHeight + 12
   WlrLayershell.layer: WlrLayer.Overlay
-  WlrLayershell.namespace: "pond-capture-toast"
+  WlrLayershell.namespace: "lilypad-toast"
   WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
   WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
@@ -149,7 +149,7 @@ PanelWindow {
           anchors.centerIn: parent
           text: "▶  " + Capture.State.extension.toUpperCase()
           color: "white"
-          font { family: Shell.Theme.fontFamily; pixelSize: 11; weight: Font.DemiBold }
+          font { family: Shell.PanelStyle.fontFamily; pixelSize: 11; weight: Font.DemiBold }
         }
       }
 
@@ -212,7 +212,7 @@ PanelWindow {
           anchors.centerIn: parent
           text: parent.text
           color: "#3D2C52"
-          font { family: Shell.Theme.fontFamily; pixelSize: 12; weight: Font.Medium }
+          font { family: Shell.PanelStyle.fontFamily; pixelSize: 12; weight: Font.Medium }
         }
       }
     }
@@ -265,7 +265,7 @@ PanelWindow {
       anchors.centerIn: parent
       text: pill.label
       color: pillMouse.containsMouse && !pill.danger ? "#1d1d1d" : "white"
-      font { family: Shell.Theme.fontFamily; pixelSize: 12; weight: Font.Medium }
+      font { family: Shell.PanelStyle.fontFamily; pixelSize: 12; weight: Font.Medium }
     }
     MouseArea {
       id: pillMouse

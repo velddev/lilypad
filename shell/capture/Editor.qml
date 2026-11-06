@@ -9,7 +9,7 @@ import ".." as Shell
 // picked: pen, arrow, line, rect, text, marker (highlighter) and pixelate (redact).
 // Tool and colour are shared through Capture.State; undo goes through its history
 // so it steps back across monitors in the order things were drawn. bake() writes
-// the whole annotated monitor, which pond-capture crops like the plain frame.
+// the whole annotated monitor, which lilypad crops like the plain frame.
 // The recording overlay uses it too, over the live screen (channel "live", no
 // frame, so no pixelate), where strokes can fade out a few seconds after drawing.
 // Pixelated boxes stay at the bottom and highlighter strokes under everything
@@ -223,7 +223,7 @@ Item {
   }
 
   // Render the whole monitor with its annotations at full resolution and save it
-  // (PPM: quick to write, and pond-capture crops it like the plain frame).
+  // (PPM: quick to write, and lilypad crops it like the plain frame).
   function bake(path, done) {
     commitText();
     draft = null;
@@ -299,7 +299,7 @@ Item {
       id: textBox
       visible: editor.textOpen
       width: Math.max(implicitWidth, 2)
-      font { family: Shell.Theme.fontFamily; pixelSize: editor.textSize; weight: Font.DemiBold }
+      font { family: Shell.PanelStyle.fontFamily; pixelSize: editor.textSize; weight: Font.DemiBold }
       activeFocusOnPress: false
       cursorVisible: visible
       cursorDelegate: Rectangle { width: 2; color: textBox.color }

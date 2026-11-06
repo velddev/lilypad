@@ -4,23 +4,33 @@ Screenshots and screen recordings for niri on Wayland. Pick a region on a frozen
 detected UI element or dragging your own, draw on it first, and get a corner toast with the result.
 Everything stays on disk; nothing is uploaded.
 
-    pond-capture screen            whole focused monitor
-    pond-capture region            pick a region on a frozen screen
-    pond-capture window            click a window
-    pond-capture record            start a region recording, or stop the running one
+    lilypad screen            whole focused monitor
+    lilypad region            pick a region on a frozen screen
+    lilypad window            click a window
+    lilypad record            start a region recording, or stop the running one
 
-The top of `bin/pond-capture` lists every command.
+The top of `bin/lilypad` lists every command. Screenshots go to `~/Pictures/Screenshots` and
+recordings to `~/Videos/Screen Recordings`.
+
+## Install
+
+Needs niri, quickshell, python, grim, imagemagick, wl-clipboard, ffmpeg and gpu-screen-recorder.
+slurp is the fallback picker, satty the editor. Then build the region detector and link the command:
+
+    ./build.sh
+    ln -s "$PWD/bin/lilypad" ~/.local/bin/lilypad
+
+Bind it in niri:
+
+    Ctrl+Shift+3     { spawn "lilypad" "screen"; }
+    Ctrl+Shift+4     { spawn "lilypad" "region"; }
+    Ctrl+Shift+Alt+4 { spawn "lilypad" "window"; }
+
+The first capture starts the UI (`qs -p shell`) and it stays running. To change the accent colour, put
+`{"accent": "#89B4FA"}` in `~/.config/lilypad/accent.json`.
 
 ## Layout
 
-- `bin/pond-capture`: the command, in Python
-- `shell/capture/`: the Quickshell UI (selector, editor, toolbar, overlay, toast)
-- `shell/assets/`: the icons that UI loads
-- `src/pond-regions.c`: finds rectangular UI elements in a screenshot. `./build.sh` builds it into `bin/`
-
-## Status
-
-Copied from [velddev/dotfiles](https://github.com/velddev/dotfiles) at `239998d`, where the running copy
-still lives. It doesn't run on its own yet: `shell/capture/` is written to sit inside pond-shell and
-imports its `PanelStyle`, `Theme`, `Accent`, `PopoverFade`, `Shadow` and `HoverAnimation`, and
-`pond-capture` calls pond-shell over IPC. The names still say `pond-capture` and `pond-regions`.
+- `bin/lilypad`: the command, in Python
+- `shell/`: the Quickshell UI, with the selector, editor, toolbar, overlay and toast in `capture/`
+- `src/lilypad-regions.c`: finds rectangular UI elements in a screenshot. `./build.sh` builds it into `bin/`
