@@ -1,6 +1,7 @@
-<img src="assets/logo.svg" width="96" alt="">
-
-# Lilypad
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg">
+  <img src="assets/logo-light.svg" width="240" alt="Lilypad">
+</picture>
 
 Screenshots and screen recordings for niri on Wayland. Pick a region on a frozen screen by clicking a
 detected UI element or dragging your own, draw on it first, and get a corner toast with the result.
