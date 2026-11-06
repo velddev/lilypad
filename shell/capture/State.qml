@@ -169,6 +169,13 @@ Singleton {
   property string recordingOutput: ""
   property double recordingSince: 0
 
+  // For a bar outside Lilypad to show the recording. The README has the format.
+  readonly property string status: JSON.stringify({ recording: recording, since: recordingSince,
+      canDraw: liveActive && recordOutput !== "", drawing: liveTool !== "" })
+  onStatusChanged: statusFile.setText(status + "\n")
+  Component.onCompleted: statusFile.setText(status + "\n")
+  FileView { id: statusFile; path: root.runtimeDir + "/status.json"; printErrors: false }
+
   readonly property bool isVideo: kind === "video"
   readonly property string fileName: path.substring(path.lastIndexOf("/") + 1)
   readonly property string extension: fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase()

@@ -1,3 +1,5 @@
+<img src="assets/logo.svg" width="96" alt="">
+
 # Lilypad
 
 Screenshots and screen recordings for niri on Wayland. Pick a region on a frozen screen by clicking a
@@ -28,6 +30,12 @@ Bind it in niri:
 
 The first capture starts the UI (`qs -p shell`) and it stays running. To change the accent colour, put
 `{"accent": "#89B4FA"}` in `~/.config/lilypad/accent.json`.
+
+## Status file
+
+`$XDG_RUNTIME_DIR/lilypad/status.json` says what a bar needs to show a recording:
+`{"recording": true, "since": <ms since the epoch>, "canDraw": true, "drawing": false}`. Stop with
+`lilypad record` and toggle drawing with `lilypad draw`.
 
 ## Layout
 
