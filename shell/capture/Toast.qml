@@ -8,8 +8,7 @@ import "." as Capture
 import ".." as Shell
 
 // iPhone-style capture thumbnail: slides into the bottom-right corner,
-// click to open, swipe right to put it away. Region screenshots are annotated
-// in the picker before they get here; Markup opens satty for anything else.
+// click to open, Ctrl+click to show it in its folder, swipe right to put it away.
 // The file is already saved; dismissing never deletes it.
 PanelWindow {
   id: root
@@ -34,7 +33,9 @@ PanelWindow {
   implicitHeight: cardHeight + 12
   WlrLayershell.layer: WlrLayer.Overlay
   WlrLayershell.namespace: "lilypad-toast"
-  WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+  // A client only sees modifiers while it has the keyboard, so a click brings it here for Ctrl.
+  // Only under the pointer: niri focuses a new on-demand surface, and that would stop your typing.
+  WlrLayershell.keyboardFocus: hover.hovered ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
   WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
   function slideIn() {
@@ -153,50 +154,6 @@ PanelWindow {
         }
       }
 
-      // Actions, shown on hover
-      Flow {
-        anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 8 }
-        spacing: 5
-        opacity: hover.hovered && Capture.State.converting === "" ? 1 : 0
-        visible: opacity > 0.01
-        Behavior on opacity { NumberAnimation { duration: 120 } }
-
-        Pill {
-          label: "Open"
-          onActivated: Capture.State.act("open")
-        }
-        Pill {
-          visible: !Capture.State.isVideo
-          label: "Markup"
-          onActivated: Capture.State.act("edit")
-        }
-        Pill {
-          label: "Copy"
-          onActivated: { Capture.State.act("copy"); Capture.State.flash("Copied"); }
-        }
-        Pill { label: "Folder"; onActivated: Capture.State.act("reveal") }
-        Pill {
-          visible: Capture.State.isVideo && Capture.State.extension !== "gif"
-          label: "GIF"
-          onActivated: Capture.State.act("convert", ["gif"])
-        }
-        Pill {
-          visible: Capture.State.isVideo && Capture.State.extension !== "webm"
-          label: "WebM"
-          onActivated: Capture.State.act("convert", ["webm"])
-        }
-        Pill {
-          visible: Capture.State.isVideo && Capture.State.extension !== "mp4"
-          label: "MP4"
-          onActivated: Capture.State.act("convert", ["mp4"])
-        }
-        Pill {
-          label: "Delete"
-          danger: true
-          onActivated: { Capture.State.act("delete"); root.slideOut(); }
-        }
-      }
-
       // Status line: conversions and short confirmations
       Rectangle {
         readonly property string text: Capture.State.converting !== ""
@@ -217,11 +174,11 @@ PanelWindow {
       }
     }
 
-    HoverHandler { id: hover }
+    HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
 
     TapHandler {
       gesturePolicy: TapHandler.DragThreshold
-      onTapped: Capture.State.act("open")
+      onTapped: Capture.State.act(point.modifiers & Qt.ControlModifier ? "reveal" : "open")
     }
 
     // Swipe right to dismiss; dragging left only gives a little resistance.
@@ -247,32 +204,6 @@ PanelWindow {
         const dx = translation.x;
         root.offset = startOffset + (dx > 0 ? dx : dx * 0.2);
       }
-    }
-  }
-
-  component Pill: Rectangle {
-    id: pill
-    required property string label
-    property bool danger: false
-    signal activated
-    width: pillText.implicitWidth + 16
-    height: 24
-    radius: 12
-    color: pillMouse.containsMouse ? (danger ? "#e0d9534f" : "#f2ffffff") : "#cc1d1d1d"
-    Behavior on color { ColorAnimation { duration: 100 } }
-    Text {
-      id: pillText
-      anchors.centerIn: parent
-      text: pill.label
-      color: pillMouse.containsMouse && !pill.danger ? "#1d1d1d" : "white"
-      font { family: Shell.PanelStyle.fontFamily; pixelSize: 12; weight: Font.Medium }
-    }
-    MouseArea {
-      id: pillMouse
-      anchors.fill: parent
-      hoverEnabled: true
-      cursorShape: Qt.PointingHandCursor
-      onClicked: pill.activated()
     }
   }
 }
