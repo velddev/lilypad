@@ -17,17 +17,14 @@ recordings to `~/Videos/Screen Recordings`.
 
 ## Install
 
-Needs niri, quickshell, python, grim, imagemagick, wl-clipboard, ffmpeg and gpu-screen-recorder.
-slurp is the fallback picker, satty the editor. Then build the region detector and link the command:
+    curl -fsSL https://lilypad.to | sh
 
-    ./build.sh
-    ln -s "$PWD/bin/lilypad" ~/.local/bin/lilypad
+It clones to `~/.local/share/lilypad`, builds the region detector, links `lilypad` into `~/.local/bin`
+and prints the niri binds to add. It needs no root, and running it again updates Lilypad. If anything
+is missing it says what, and stops before changing anything.
 
-Bind it in niri:
-
-    Ctrl+Shift+3     { spawn "lilypad" "screen"; }
-    Ctrl+Shift+4     { spawn "lilypad" "region"; }
-    Ctrl+Shift+Alt+4 { spawn "lilypad" "window"; }
+Needs niri, quickshell, python, grim, imagemagick, wl-clipboard, ffmpeg, gpu-screen-recorder, git and a
+C compiler. slurp is the fallback picker, satty the editor.
 
 The first capture starts the UI (`qs -p shell`) and it stays running. To change the accent colour, put
 `{"accent": "#89B4FA"}` in `~/.config/lilypad/accent.json`.
