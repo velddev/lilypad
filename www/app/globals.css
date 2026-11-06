@@ -1,0 +1,240 @@
+:root {
+  color-scheme: light dark;
+  --bg: #eef2ea;
+  --card: #ffffff;
+  --ink: #171a17;
+  --line: rgba(0, 0, 0, 0.12);
+  --sans: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  /* The toolbar is the app's: dark glass in either theme. */
+  --glass: rgba(29, 29, 29, 0.72);
+  --glass-line: rgba(255, 255, 255, 0.1);
+  --hover: rgba(255, 255, 255, 0.04);
+  --pressed: rgba(255, 255, 255, 0.1);
+  --button: 32px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1411;
+    --card: #171e1a;
+    --ink: #f1f4f0;
+    --line: rgba(255, 255, 255, 0.12);
+  }
+}
+
+@media (max-width: 460px) {
+  :root { --button: 26px; }
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; margin: 0; }
+
+body {
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+}
+
+.scene {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.card {
+  display: grid;
+  justify-items: center;
+  gap: 28px;
+  width: min(460px, 100%);
+  padding: 0 24px;
+}
+
+.logo { margin: 0; line-height: 0; }
+.logo img { width: min(280px, 64vw); height: auto; }
+.logo .dark { display: none; }
+
+@media (prefers-color-scheme: dark) {
+  .logo .light { display: none; }
+  .logo .dark { display: block; }
+}
+
+.install {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 6px 6px 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.install code {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  font: 14px/1.5 var(--mono);
+  white-space: nowrap;
+  scrollbar-width: none;
+}
+
+/* Above the surface, so it stays clickable while the select tool is up. */
+.copy {
+  position: relative;
+  z-index: 3;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  color: inherit;
+  cursor: pointer;
+}
+
+.copy:hover { background: var(--line); }
+.drawing .copy { pointer-events: none; }
+
+canvas, .surface, .shade { position: fixed; inset: 0; }
+canvas { z-index: 1; width: 100%; height: 100%; pointer-events: none; }
+
+.surface { z-index: 2; cursor: crosshair; touch-action: none; }
+.surface.text { cursor: text; }
+
+.shade {
+  z-index: 4;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.5);
+  animation: fade 140ms ease-out;
+}
+
+.outline {
+  position: fixed;
+  z-index: 5;
+  pointer-events: none;
+  border: 1px solid white;
+  transition: left 110ms, top 110ms, width 110ms, height 110ms;
+  transition-timing-function: cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+.outline.dragging { transition: none; }
+.outline.hint { opacity: 0.4; }
+
+.size {
+  position: fixed;
+  z-index: 5;
+  padding: 0 7px;
+  background: rgba(29, 29, 29, 0.9);
+  border-radius: 6px;
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: 22px;
+  pointer-events: none;
+}
+
+.bar, .swatches {
+  position: fixed;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 6px;
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  border-radius: 16px;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.13), 0 9px 10px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(24px);
+  transform: translateX(-50%);
+  transition: left 110ms, top 110ms;
+  animation: fade 140ms ease-out;
+}
+
+.bar { height: 44px; }
+.swatches { height: 40px; }
+
+.tool {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--button);
+  height: var(--button);
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 120ms;
+}
+
+.tool img { width: 16px; height: 16px; opacity: 0.6; transition: opacity 120ms; }
+.tool:hover { background: var(--hover); }
+.tool:hover img, .tool[aria-pressed="true"] img { opacity: 1; }
+.tool:active, .tool[aria-pressed="true"] { background: var(--pressed); }
+.tool:disabled { opacity: 0.35; background: none; cursor: default; }
+.tool:disabled img { opacity: 0.6; }
+.tool:focus-visible, .copy:focus-visible, .reopen:focus-visible { outline: 2px solid #89b4fa; outline-offset: 1px; }
+
+.dot {
+  width: 16px;
+  height: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 50%;
+}
+
+.swatches .tool { width: 28px; height: 28px; border-radius: 9px; }
+.swatches .tool[aria-pressed="true"] { background: none; }
+.swatches .tool[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border: 1.5px solid white;
+  border-radius: 50%;
+}
+
+.divider { flex: none; width: 1px; height: 18px; margin: 0 4px; background: var(--glass-line); }
+
+.label {
+  position: fixed;
+  z-index: 3;
+  min-width: 2ch;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  outline: 0;
+  font: 600 22px/1.2 var(--sans);
+  field-sizing: content;
+}
+
+.reopen {
+  position: fixed;
+  z-index: 6;
+  left: 50%;
+  bottom: 28px;
+  padding: 8px 14px;
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  border-radius: 12px;
+  color: white;
+  font: 500 13px var(--sans);
+  transform: translateX(-50%);
+  cursor: pointer;
+}
+
+@keyframes fade {
+  from { opacity: 0.4; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .outline, .bar, .swatches, .shade { animation: none; transition: none; }
+}
