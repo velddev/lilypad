@@ -248,7 +248,7 @@ def capture_region():
         # (with whatever was drawn on it).
         k = sel.scale
         crop = f"{round(sel.w * k)}x{round(sel.h * k)}+{round(sel.x * k)}+{round(sel.y * k)}"
-        run("magick", str(sel.annotated or sel.frame), "-crop", crop, "+repage", str(path))
+        run(REGIONS, "--crop", crop, str(sel.annotated or sel.frame), str(path))
     else:
         run("grim", "-g", f"{sel.gx},{sel.gy} {sel.w}x{sel.h}", str(path))
     cleanup_frames()

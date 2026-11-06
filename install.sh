@@ -3,8 +3,8 @@
 #
 #   curl -fsSL https://lilypad.to | sh
 #
-# Clones it to ~/.local/share/lilypad, builds the region detector and links `lilypad` into
-# ~/.local/bin. Anything else, it asks first: root is only for installing missing packages.
+# Downloads the prebuilt release to ~/.local/share/lilypad and links `lilypad` into ~/.local/bin.
+# Anything else, it asks first: root is only for installing missing packages.
 # Everything is in main, so a download cut off halfway runs nothing.
 set -eu
 
@@ -19,16 +19,32 @@ ask() {
   esac
 }
 
+fetch() {
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "$1"
+  else
+    wget -qO- "$1"
+  fi
+}
+
 main() {
-  repo=${LILYPAD_REPO:-https://github.com/velddev/lilypad.git}
+  base=${LILYPAD_URL:-https://github.com/velddev/lilypad/releases/latest/download}
   dir=${XDG_DATA_HOME:-$HOME/.local/share}/lilypad
   link=$HOME/.local/bin/lilypad
+  arch=$(uname -m)
+
+  case $arch in
+    x86_64 | aarch64) ;;
+    *)
+      echo "Lilypad has no build for $arch."
+      exit 1
+      ;;
+  esac
 
   # command:Arch package
   missing=
-  for need in bash:bash git:git cc:gcc python3:python niri:niri qs:quickshell grim:grim \
-      magick:imagemagick wl-copy:wl-clipboard ffmpeg:ffmpeg \
-      gpu-screen-recorder:gpu-screen-recorder; do
+  for need in python3:python niri:niri qs:quickshell grim:grim wl-copy:wl-clipboard \
+      ffmpeg:ffmpeg gpu-screen-recorder:gpu-screen-recorder; do
     command -v "${need%%:*}" >/dev/null 2>&1 || missing="$missing ${need#*:}"
   done
   if [ -n "$missing" ]; then
@@ -46,15 +62,16 @@ main() {
     ask "$link already exists. Replace it?" || exit 1
   fi
 
-  if [ -d "$dir/.git" ]; then
-    echo "Updating $dir"
-    git -C "$dir" pull --quiet --ff-only
-  else
-    echo "Cloning into $dir"
-    mkdir -p "$(dirname "$dir")"
-    GIT_TERMINAL_PROMPT=0 git clone --quiet --depth 1 "$repo" "$dir"
-  fi
-  "$dir/build.sh"
+  echo "Downloading Lilypad into $dir"
+  mkdir -p "$(dirname "$dir")"
+  new=$(mktemp -d "$dir.XXXXXX")
+  trap 'rm -rf "$new"' EXIT
+  fetch "$base/lilypad-$arch.tar.gz" | tar -xzf - -C "$new"
+  chmod 755 "$new"
+  rm -rf "$dir"
+  mv "$new" "$dir"
+  # A running shell still has the old files: the next capture starts a fresh one.
+  qs kill -p "$dir/shell" >/dev/null 2>&1 || true
   mkdir -p "$(dirname "$link")"
   ln -sfn "$dir/bin/lilypad" "$link"
 

@@ -1,0 +1,37 @@
+name: Release
+
+# Rebuilds the tarballs install.sh downloads whenever the app changes.
+on:
+  push:
+    branches: [main]
+    paths:
+      - bin/**
+      - shell/**
+      - src/**
+      - build.sh
+      - ci/**
+      - .github/workflows/release.yml
+  workflow_dispatch:
+
+concurrency: release
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - name: Build the tarballs
+        run: |
+          for arch in amd64 arm64; do
+            docker run --rm --platform "linux/$arch" -v "$PWD:/src" alpine:3.22 /src/ci/release.sh
+          done
+      - name: Publish them
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view latest >/dev/null 2>&1 || gh release create latest --title Latest --notes "Built from main."
+          gh release upload latest dist/*.tar.gz --clobber
