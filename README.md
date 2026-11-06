@@ -26,12 +26,6 @@ C compiler. slurp is the fallback picker, satty the editor.
 The first capture starts the UI (`qs -p shell`) and it stays running. To change the accent colour, put
 `{"accent": "#89B4FA"}` in `~/.config/lilypad/accent.json`.
 
-## Status file
-
-`$XDG_RUNTIME_DIR/lilypad/status.json` says what a bar needs to show a recording:
-`{"recording": true, "since": <ms since the epoch>, "canDraw": true, "drawing": false}`. Stop with
-`lilypad record` and toggle drawing with `lilypad draw`.
-
 ## Layout
 
 - `bin/lilypad`: the command, in Python
