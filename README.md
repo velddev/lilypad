@@ -9,7 +9,7 @@ Everything stays on disk; nothing is uploaded.
     pond-capture window            click a window
     pond-capture record            start a region recording, or stop the running one
 
-`pond-capture` with no arguments isn't useful; see the top of `bin/pond-capture` for every command.
+The top of `bin/pond-capture` lists every command.
 
 ## Layout
 
