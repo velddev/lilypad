@@ -12,8 +12,6 @@
   lilypad draw-clear        wipe the drawing over the running recording
   lilypad convert PATH gif|webm|mp4
   lilypad edit|copy|reveal|delete|open PATH
-
-Everything stays on disk; nothing is uploaded.
 """
 import datetime
 import fcntl
@@ -28,8 +26,16 @@ import time
 from pathlib import Path
 
 HOME = Path.home()
-SHOTS = HOME / "Pictures" / "Screenshots"
-VIDEOS = HOME / "Videos" / "Screen Recordings"
+CONFIG_FILE = Path(os.environ.get("XDG_CONFIG_HOME", HOME / ".config")) / "lilypad" / "config.json"
+try:
+    CONFIG = json.loads(CONFIG_FILE.read_text())
+except FileNotFoundError:
+    CONFIG = {}
+except (OSError, ValueError) as error:
+    print(f"Ignoring {CONFIG_FILE}: {error}", file=sys.stderr)
+    CONFIG = {}
+SHOTS = Path(CONFIG.get("screenshots", HOME / "Pictures" / "Screenshots")).expanduser()
+VIDEOS = Path(CONFIG.get("recordings", HOME / "Videos" / "Screen Recordings")).expanduser()
 CACHE = Path(os.environ.get("XDG_CACHE_HOME", HOME / ".cache")) / "lilypad"
 RUNTIME = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "lilypad"
 RECORDING = RUNTIME / "recording.json"
@@ -37,7 +43,7 @@ BIN = Path(__file__).resolve().parent
 REGIONS = BIN / "lilypad-regions"
 QS = ["qs", "-p", str(BIN.parent / "shell")]
 
-RECORD_FPS = "60"
+RECORD_FPS = str(CONFIG.get("fps", 60))
 SLURP_STYLE = ["-b", "00000059", "-c", "ffffffd9", "-s", "ffffff14", "-w", "1", "-d",
                "-F", "Segoe UI Variable"]
 VIDEO_EXTS = {".mp4", ".webm", ".gif", ".mkv"}
@@ -63,6 +69,7 @@ def ipc(*args):
 
 def start_shell():
     """Start the shell if it isn't running, and wait until it answers."""
+    CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)  # or the shell can't watch for the file
     subprocess.run([*QS, "-n", "-d"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     deadline = time.monotonic() + 5
     while time.monotonic() < deadline:

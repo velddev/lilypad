@@ -9,8 +9,7 @@ detected UI element or dragging your own.
     lilypad window            click a window
     lilypad record            start a region recording, or stop the running one
 
-The top of `bin/lilypad` lists every command. Screenshots go to `~/Pictures/Screenshots` and
-recordings to `~/Videos/Screen Recordings`.
+The top of `bin/lilypad` lists every command.
 
 ## Install
 
@@ -18,10 +17,18 @@ recordings to `~/Videos/Screen Recordings`.
 
 ## Configure
 
-Create `~/.config/lilypad/accent.json`. Changes apply right away.
+Create `~/.config/lilypad/config.json`. Every key is optional.
 
 | Key | Type | Default | What it does |
 |---|---|---|---|
-| `accent` | hex colour | `#B0FF4F` | The default drawing colour, and the first swatch in the toolbar |
+| `accent` | hex colour | `#B0FF4F` | The default drawing colour, and the first swatch in the toolbar. Applies right away |
+| `screenshots` | path | `~/Pictures/Screenshots` | Where screenshots are saved |
+| `recordings` | path | `~/Videos/Screen Recordings` | Where recordings are saved |
+| `fps` | number | `60` | The frame rate of recordings |
 
-    {"accent": "#89B4FA"}
+    {
+      "accent": "#89B4FA",
+      "screenshots": "~/Screenshots",
+      "recordings": "~/Recordings",
+      "fps": 30
+    }
