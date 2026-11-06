@@ -16,15 +16,11 @@ recordings to `~/Videos/Screen Recordings`.
 
     curl -fsSL https://lilypad.to | sh
 
-It clones to `~/.local/share/lilypad`, builds the region detector, links `lilypad` into `~/.local/bin`
-and prints the niri binds to add. Running it again updates Lilypad. If packages are missing it asks
-before installing them with pacman; on other distros it lists them for you to install.
+## Configure
 
-Needs niri, quickshell, python, grim, imagemagick, wl-clipboard, ffmpeg, gpu-screen-recorder, git and a
-C compiler. slurp is the fallback picker, satty the editor.
+`~/.config/lilypad/accent.json`:
 
-The first capture starts the UI (`qs -p shell`) and it stays running. To change the accent colour, put
-`{"accent": "#89B4FA"}` in `~/.config/lilypad/accent.json`.
+    {"accent": "#89B4FA"}
 
 ## Layout
 
