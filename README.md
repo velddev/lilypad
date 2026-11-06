@@ -18,6 +18,10 @@ recordings to `~/Videos/Screen Recordings`.
 
 ## Configure
 
-`~/.config/lilypad/accent.json`:
+Create `~/.config/lilypad/accent.json`. Changes apply right away.
+
+| Key | Type | Default | What it does |
+|---|---|---|---|
+| `accent` | hex colour | `#B0FF4F` | The default drawing colour, and the first swatch in the toolbar |
 
     {"accent": "#89B4FA"}
