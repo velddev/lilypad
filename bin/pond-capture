@@ -1,0 +1,366 @@
+#!/usr/bin/env python3
+"""Screenshots and screen recordings for Pond, with a corner toast in pond-shell.
+
+  pond-capture screen            whole focused monitor
+  pond-capture region            pick a region on a frozen screen: click a detected UI element
+                                 (scroll to step out to bigger ones) or drag your own; draw on
+                                 the frozen screen first with the toolbar if you like
+  pond-capture window            click a window; niri captures exactly that window
+  pond-capture record            start a region recording, or stop the running one; draw on
+                                 the screen before it starts and while it runs
+  pond-capture draw              drawing over the running recording: on/off
+  pond-capture draw-clear        wipe the drawing over the running recording
+  pond-capture convert PATH gif|webm|mp4
+  pond-capture edit|copy|reveal|delete|open PATH
+
+Everything stays on disk; nothing is uploaded.
+"""
+import datetime
+import fcntl
+import json
+import os
+import re
+import signal
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+HOME = Path.home()
+SHOTS = HOME / "Pictures" / "Screenshots"
+VIDEOS = HOME / "Videos" / "Screen Recordings"
+CACHE = Path(os.environ.get("XDG_CACHE_HOME", HOME / ".cache")) / "pond-capture"
+RUNTIME = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "pond-capture"
+RECORDING = RUNTIME / "recording.json"
+REGIONS = HOME / ".local" / "bin" / "pond-regions"
+
+RECORD_FPS = "60"
+SLURP_STYLE = ["-b", "00000059", "-c", "ffffffd9", "-s", "ffffff14", "-w", "1", "-d",
+               "-F", "Segoe UI Variable"]
+VIDEO_EXTS = {".mp4", ".webm", ".gif", ".mkv"}
+
+
+def run(*args, **kwargs):
+    return subprocess.run(args, check=True, **kwargs)
+
+
+def niri(*args):
+    return json.loads(subprocess.run(["niri", "msg", "-j", *args], check=True,
+                                     capture_output=True, text=True).stdout)
+
+
+def stamp():
+    return datetime.datetime.now().strftime("%Y-%m-%d at %H.%M.%S")
+
+
+def shell(*args):
+    """Tell pond-shell about a capture. Returns False if the shell isn't reachable;
+    callers carry on regardless so a capture is never lost."""
+    return subprocess.run(["qs", "-c", "pond-shell", "ipc", "call", "capture", *map(str, args)],
+                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+
+
+def shell_selection():
+    """The token of the shell's open picker, "" for none, or None if the shell can't say
+    (unreachable, or a shell from before `selection` existed): then keep waiting."""
+    try:
+        r = subprocess.run(["qs", "-c", "pond-shell", "ipc", "call", "capture", "selection"],
+                           capture_output=True, text=True, timeout=2)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    out = r.stdout.strip()
+    # qs prints "Function not found." with exit 0 on a shell without `selection`.
+    if r.returncode != 0 or (out and not re.fullmatch(r"\d+-\d+", out)):
+        return None
+    return out
+
+
+def outputs():
+    return {name: o["logical"] for name, o in niri("outputs").items() if o.get("logical")}
+
+
+def output_at(x, y):
+    for name, rect in outputs().items():
+        if rect["x"] <= x < rect["x"] + rect["width"] and rect["y"] <= y < rect["y"] + rect["height"]:
+            return name
+    return focused_output()
+
+
+def focused_output():
+    return niri("focused-output")["name"]
+
+
+def snap_boxes():
+    """Floating windows on visible workspaces. niri does not report on-screen
+    positions for tiled windows, so those are picked with `window` instead."""
+    outs = outputs()
+    active = {ws["id"]: ws["output"] for ws in niri("workspaces") if ws["is_active"]}
+    boxes = []
+    for w in niri("windows"):
+        layout = w.get("layout") or {}
+        pos = layout.get("tile_pos_in_workspace_view")
+        if pos is None or w.get("workspace_id") not in active:
+            continue
+        out = outs.get(active[w["workspace_id"]])
+        if not out:
+            continue
+        off = layout.get("window_offset_in_tile") or [0, 0]
+        width, height = layout["window_size"]
+        x, y = round(out["x"] + pos[0] + off[0]), round(out["y"] + pos[1] + off[1])
+        boxes.append(f"{x},{y} {width}x{height} {w.get('app_id') or ''}")
+    return "\n".join(boxes) + ("\n" if boxes else "")
+
+
+class Selection:
+    def __init__(self, output, x, y, w, h, frame=None, scale=1.0, annotated=None):
+        self.output, self.x, self.y, self.w, self.h = output, x, y, w, h  # logical, output-local
+        self.frame, self.scale = frame, scale
+        self.annotated = annotated  # the monitor with the picker's drawings baked in, like frame
+        origin = outputs().get(output, {"x": 0, "y": 0})
+        self.gx, self.gy = origin["x"] + x, origin["y"] + y  # logical, global
+
+
+def select_with_slurp():
+    result = subprocess.run(["slurp", "-o", *SLURP_STYLE, "-f", "%x %y %w %h"],
+                            input=snap_boxes(), capture_output=True, text=True)
+    if result.returncode != 0 or not result.stdout.strip():
+        return None
+    gx, gy, w, h = map(int, result.stdout.split())
+    if w < 2 or h < 2:
+        return None
+    name = output_at(gx + w // 2, gy + h // 2)
+    origin = outputs()[name]
+    return Selection(name, gx - origin["x"], gy - origin["y"], w, h)
+
+
+def select_region(mode="region"):
+    """Freeze every monitor, detect UI elements, and let pond-shell's picker choose.
+    mode "image" (screenshot) and "record" show the picker's drawing toolbar; "region"
+    doesn't. Returns a Selection, or None when cancelled."""
+    RUNTIME.mkdir(parents=True, exist_ok=True)
+    lock = open(RUNTIME / "select.lock", "w")
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        return None  # a picker is already open
+
+    outs = niri("outputs")
+    names = [n for n, o in outs.items() if o.get("logical")]
+    frames = {n: RUNTIME / f"freeze-{n}.ppm" for n in names}
+    for proc in [subprocess.Popen(["grim", "-t", "ppm", "-o", n, str(frames[n])]) for n in names]:
+        proc.wait()
+    detectors = [subprocess.Popen(["sh", "-c", '"$1" "$2" > "$3.tmp" && mv "$3.tmp" "$3"', "_",
+                                   str(REGIONS), str(frames[n]), str(RUNTIME / f"regions-{n}.json")])
+                 for n in names]
+    for proc in detectors:
+        proc.wait()
+
+    token = f"{os.getpid()}-{time.monotonic_ns()}"
+    reply = RUNTIME / f"selection-{token}"
+    if mode == "region":
+        asked = shell("select", token)
+    else:
+        asked = shell("selectImage" if mode == "image" else "selectRecord", token, focused_output())
+    if not asked:
+        return select_with_slurp()
+    deadline = time.monotonic() + 600
+    next_check = time.monotonic() + 1.0
+    while not reply.exists():
+        if time.monotonic() > deadline:
+            shell("cancelSelect")
+            return None
+        if time.monotonic() > next_check:
+            # The picker can vanish without answering (a shell reload): stop waiting then.
+            next_check = time.monotonic() + 1.0
+            if shell_selection() not in (token, None):
+                # A finished picker closes just before its answer file lands: give it a moment.
+                time.sleep(0.5)
+                if not reply.exists():
+                    return None
+        time.sleep(0.02)
+    answer = reply.read_text().split()
+    reply.unlink(missing_ok=True)
+    if not answer or answer[0] == "cancel" or answer[0] not in frames:
+        return None
+    name = answer[0]
+    x, y, w, h = map(int, answer[1:5])
+    annotated = Path(answer[5]) if len(answer) > 5 else None
+    if annotated and (annotated.parent != RUNTIME or not annotated.is_file()):
+        annotated = None
+    return Selection(name, x, y, w, h, frames[name], outs[name]["logical"]["scale"], annotated)
+
+
+def cleanup_frames():
+    for f in RUNTIME.glob("freeze-*.ppm"):
+        f.unlink(missing_ok=True)
+    for f in RUNTIME.glob("regions-*.json"):
+        f.unlink(missing_ok=True)
+    for f in RUNTIME.glob("annotated-*.ppm"):
+        f.unlink(missing_ok=True)
+
+
+def finish_image(path, output):
+    run("sh", "-c", 'wl-copy --type image/png < "$1"', "_", str(path))
+    shell("present", path, path, "image", output)
+
+
+def capture_screen():
+    SHOTS.mkdir(parents=True, exist_ok=True)
+    output = focused_output()
+    path = SHOTS / f"Screenshot {stamp()}.png"
+    run("grim", "-o", output, str(path))
+    finish_image(path, output)
+
+
+def capture_region():
+    sel = select_region("image")
+    if not sel:
+        cleanup_frames()
+        return
+    SHOTS.mkdir(parents=True, exist_ok=True)
+    path = SHOTS / f"Screenshot {stamp()}.png"
+    if sel.frame:
+        # Crop the frozen frame, so you get exactly what you saw while picking
+        # (with whatever was drawn on it).
+        k = sel.scale
+        crop = f"{round(sel.w * k)}x{round(sel.h * k)}+{round(sel.x * k)}+{round(sel.y * k)}"
+        run("magick", str(sel.annotated or sel.frame), "-crop", crop, "+repage", str(path))
+    else:
+        run("grim", "-g", f"{sel.gx},{sel.gy} {sel.w}x{sel.h}", str(path))
+    cleanup_frames()
+    finish_image(path, sel.output)
+
+
+def capture_window():
+    picked = subprocess.run(["niri", "msg", "-j", "pick-window"], capture_output=True, text=True)
+    if picked.returncode != 0 or not picked.stdout.strip() or picked.stdout.strip() == "null":
+        return
+    window = json.loads(picked.stdout)
+    SHOTS.mkdir(parents=True, exist_ok=True)
+    path = SHOTS / f"Screenshot {stamp()}.png"
+    # niri copies it to the clipboard and announces it; pond-shell shows the toast.
+    run("niri", "msg", "action", "screenshot-window", "--id", str(window["id"]),
+        "--path", str(path), "--write-to-disk", "true")
+
+
+def thumbnail(video):
+    CACHE.mkdir(parents=True, exist_ok=True)
+    thumb = CACHE / (video.stem + ".png")
+    subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-ss", "0.3", "-i", str(video),
+                    "-frames:v", "1", "-vf", "scale=480:-2", str(thumb)])
+    if not thumb.exists():
+        subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", str(video),
+                        "-frames:v", "1", "-vf", "scale=480:-2", str(thumb)])
+    return thumb
+
+
+def record():
+    RUNTIME.mkdir(parents=True, exist_ok=True)
+    if RECORDING.exists():
+        state = json.loads(RECORDING.read_text())
+        try:
+            os.kill(state["pid"], signal.SIGINT)
+            for _ in range(100):
+                os.kill(state["pid"], 0)
+                time.sleep(0.1)
+        except ProcessLookupError:
+            pass
+        RECORDING.unlink(missing_ok=True)
+        shell("recordingStopped")
+        video = Path(state["path"])
+        if video.exists() and video.stat().st_size > 0:
+            copy(video)   # straight onto the clipboard as a file, like screenshots are
+            shell("present", video, thumbnail(video), "video", state["output"])
+        return
+
+    sel = select_region("record")
+    cleanup_frames()
+    if not sel:
+        return
+    x, y = sel.gx, sel.gy
+    w, h = sel.w - sel.w % 2, sel.h - sel.h % 2  # encoders want even sizes
+    VIDEOS.mkdir(parents=True, exist_ok=True)
+    video = VIDEOS / f"Screen Recording {stamp()}.mp4"
+    output = sel.output
+    time.sleep(0.15)  # let the picker overlay disappear before recording starts
+    log = open(RUNTIME / "recorder.log", "w")
+    proc = subprocess.Popen(["gpu-screen-recorder", "-w", "region", "-region", f"{w}x{h}+{x}+{y}",
+                             "-f", RECORD_FPS, "-c", "mp4", "-o", str(video)],
+                            stdout=log, stderr=log, start_new_session=True)
+    RECORDING.write_text(json.dumps({"pid": proc.pid, "path": str(video), "output": output}))
+    shell("recordingStarted", output)
+    # Watch for the recorder dying on its own (bad region, encoder error).
+    if proc.wait() != 0 and RECORDING.exists():
+        RECORDING.unlink(missing_ok=True)
+        shell("recordingStopped")
+        subprocess.run(["notify-send", "-a", "Screen Recording", "Recording failed",
+                        (RUNTIME / "recorder.log").read_text()[-300:]])
+
+
+def convert(path, fmt):
+    src = Path(path)
+    dst = src.with_suffix("." + fmt)
+    if dst == src:
+        return
+    shell("converting", src, fmt)
+    if fmt == "gif":
+        filters = "fps=15,scale='min(960,iw)':-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4"
+        cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(src), "-vf", filters, "-loop", "0", str(dst)]
+    elif fmt == "webm":
+        cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(src), "-c:v", "libvpx-vp9", "-crf", "34",
+               "-b:v", "0", "-row-mt", "1", "-deadline", "good", "-cpu-used", "4", "-an", str(dst)]
+    else:
+        cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(src), "-c:v", "libx264", "-crf", "20",
+               "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(dst)]
+    ok = subprocess.run(cmd).returncode == 0 and dst.exists()
+    shell("converted", src, dst if ok else "")
+
+
+def edit(path):
+    subprocess.run(["satty", "--filename", path, "--output-filename", path,
+                    "--copy-command", "wl-copy", "--early-exit"])
+    shell("refresh", path)
+
+
+def copy(path):
+    p = Path(path)
+    if p.suffix.lower() in VIDEO_EXTS:
+        run("wl-copy", "--type", "text/uri-list", p.as_uri())
+    else:
+        run("sh", "-c", 'wl-copy --type image/png < "$1"', "_", path)
+
+
+def reveal(path):
+    uri = Path(path).as_uri()
+    run("gdbus", "call", "--session", "--dest", "org.freedesktop.FileManager1",
+        "--object-path", "/org/freedesktop/FileManager1",
+        "--method", "org.freedesktop.FileManager1.ShowItems", f"['{uri}']", "",
+        stdout=subprocess.DEVNULL)
+
+
+def main():
+    if len(sys.argv) < 2:
+        print(__doc__)
+        return 2
+    cmd, args = sys.argv[1], sys.argv[2:]
+    actions = {
+        "screen": capture_screen, "region": capture_region, "window": capture_window,
+        "record": record,
+        "draw": lambda: shell("toggleDraw"),
+        "draw-clear": lambda: shell("clearDraw"),
+        "convert": lambda: convert(*args[:2]),
+        "edit": lambda: edit(args[0]),
+        "copy": lambda: copy(args[0]),
+        "reveal": lambda: reveal(args[0]),
+        "delete": lambda: run("gio", "trash", args[0]),
+        "open": lambda: run("xdg-open", args[0]),
+    }
+    if cmd not in actions:
+        print(__doc__)
+        return 2
+    actions[cmd]()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
