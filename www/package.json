@@ -6,7 +6,8 @@
     "dev": "vinext dev",
     "build": "cp ../install.sh public/install.sh && vinext build",
     "preview": "wrangler pages dev dist/client --compatibility-date=2026-10-01",
-    "deploy": "wrangler pages deploy dist/client --project-name lilypad"
+    "deploy": "wrangler pages deploy dist/client --project-name lilypad",
+    "deploy:curl": "wrangler deploy --config curl/wrangler.jsonc"
   },
   "dependencies": {
     "react": "^19.3.1",
