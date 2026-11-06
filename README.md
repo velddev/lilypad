@@ -21,9 +21,3 @@ recordings to `~/Videos/Screen Recordings`.
 `~/.config/lilypad/accent.json`:
 
     {"accent": "#89B4FA"}
-
-## Layout
-
-- `bin/lilypad`: the command, in Python
-- `shell/`: the Quickshell UI, with the selector, editor, toolbar, overlay and toast in `capture/`
-- `src/lilypad-regions.c`: finds rectangular UI elements in a screenshot. `./build.sh` builds it into `bin/`
