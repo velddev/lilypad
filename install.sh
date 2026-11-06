@@ -4,9 +4,20 @@
 #   curl -fsSL https://lilypad.to | sh
 #
 # Clones it to ~/.local/share/lilypad, builds the region detector and links `lilypad` into
-# ~/.local/bin. Needs no root and changes nothing outside your home. Everything is in main, so a
-# download cut off halfway runs nothing.
+# ~/.local/bin. Anything else, it asks first: root is only for installing missing packages.
+# Everything is in main, so a download cut off halfway runs nothing.
 set -eu
+
+# curl | sh makes the script our stdin, so answers come from the terminal. No terminal means no.
+ask() {
+  printf '%s [y/N] ' "$1" >&2
+  answer=
+  { read -r answer </dev/tty; } 2>/dev/null || true
+  case $answer in
+    [yY]*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
 
 main() {
   repo=${LILYPAD_REPO:-https://github.com/velddev/lilypad.git}
@@ -21,16 +32,18 @@ main() {
     command -v "${need%%:*}" >/dev/null 2>&1 || missing="$missing ${need#*:}"
   done
   if [ -n "$missing" ]; then
-    echo "Lilypad needs these first:$missing" >&2
+    echo "Lilypad needs:$missing"
     if command -v pacman >/dev/null 2>&1; then
-      echo "  sudo pacman -S --needed$missing" >&2
+      ask "Install them with pacman?" || exit 1
+      # shellcheck disable=SC2086
+      sudo pacman -S --needed --noconfirm $missing </dev/tty
+    else
+      ask "Install them with your package manager first. Carry on anyway?" || exit 1
     fi
-    exit 1
   fi
 
   if [ -e "$link" ] && [ ! -L "$link" ]; then
-    echo "$link already exists and isn't a link: move it and run this again." >&2
-    exit 1
+    ask "$link already exists. Replace it?" || exit 1
   fi
 
   if [ -d "$dir/.git" ]; then

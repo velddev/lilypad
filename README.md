@@ -2,8 +2,7 @@
 <img src="assets/logo-dark.svg#gh-dark-mode-only" width="240" alt="Lilypad">
 
 Screenshots and screen recordings for niri on Wayland. Pick a region on a frozen screen by clicking a
-detected UI element or dragging your own, draw on it first, and get a corner toast with the result.
-Everything stays on disk; nothing is uploaded.
+detected UI element or dragging your own.
 
     lilypad screen            whole focused monitor
     lilypad region            pick a region on a frozen screen
@@ -18,8 +17,8 @@ recordings to `~/Videos/Screen Recordings`.
     curl -fsSL https://lilypad.to | sh
 
 It clones to `~/.local/share/lilypad`, builds the region detector, links `lilypad` into `~/.local/bin`
-and prints the niri binds to add. It needs no root, and running it again updates Lilypad. If anything
-is missing it says what, and stops before changing anything.
+and prints the niri binds to add. Running it again updates Lilypad. If packages are missing it asks
+before installing them with pacman; on other distros it lists them for you to install.
 
 Needs niri, quickshell, python, grim, imagemagick, wl-clipboard, ffmpeg, gpu-screen-recorder, git and a
 C compiler. slurp is the fallback picker, satty the editor.
