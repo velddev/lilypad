@@ -3,3 +3,6 @@ dist/
 out/
 .wrangler/
 public/install.sh
+.next/
+.vinext/
+next-env.d.ts
